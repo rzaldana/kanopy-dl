@@ -6,6 +6,7 @@ import re
 import base64
 import os
 import urllib.request
+from unidecode import unidecode
 
 folder_path = f"E:\MEOW"  # Make this a valid path to a folder
 
@@ -16,7 +17,7 @@ subtitles = videoinfo["captions"][0]["files"][1]["url"]
 video_id = json_data['videoId']
 r = requests.get(f'https://www.kanopy.com/kapi/videos/{video_id}', headers=headers, json=json_data)
 video_information = json.loads(r.text)
-title = video_information['video']['title']
+title = (unidecode(video_information['video']['title'])).replace(":", " -")
 year = video_information['video']['productionYear']
 name = f'{title} {year}'
 print(name)
