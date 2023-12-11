@@ -19,7 +19,7 @@ r = requests.get(f'https://www.kanopy.com/kapi/videos/{video_id}', headers=heade
 video_information = json.loads(r.text)
 title = (unidecode(video_information['video']['title'])).replace(":", " -")
 year = video_information['video']['productionYear']
-name = f'{title} {year}'
+name = f'{title} ({year})'
 print(name)
 dest_dir = f"{folder_path}/{name}"
 def getsubs():
@@ -58,9 +58,9 @@ try:
         response = requests.post('https://cdrm-project.com/wv', json=json_data)
         result = re.search(r"[a-z0-9]{16,}:[a-z0-9]{16,}", str(response.text))
         decryption_key = result.group()
-        print(decryption_key)
         decryption_key = f'key_id={decryption_key}'
         decryption_key = decryption_key.replace(":", ":key=")
+        print("Decryption Key: " + decryption_key)
         # Download the video using N_m3u8DL-RE
         os.system(
             fr'N_m3u8DL-RE "{manifesturl}" --auto-select --save-name "{name}" --auto-select --save-dir {folder_path} --tmp-dir {folder_path}/temp')
