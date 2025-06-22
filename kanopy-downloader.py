@@ -6,9 +6,11 @@ import re
 import base64
 import os
 import urllib.request
+import sys
 from unidecode import unidecode
+import subprocess
 
-folder_path = f"E:\MEOW"  # Make this a valid path to a folder
+folder_path = "."  # Make this a valid path to a folder
 
 response = requests.post('https://www.kanopy.com/kapi/plays', headers=headers, json=json_data)
 videoinfo = json.loads(response.text)
@@ -47,19 +49,36 @@ try:
         kid = result.group(1).replace('-', '')
         assert len(kid) == 32 and not isinstance(kid, bytes), "wrong KID length"
         pssh = format(get_pssh(kid).decode('utf-8'))
-        json_data = {
-            'license': 'https://wv-keyos.licensekeyserver.com/',  # Set the license URL
-            'headers': f"customdata: {drmkey['authXml']}",
-            'pssh': f'{pssh}',
-            'buildInfo': '',
-            'proxy': '',
-            'cache': False,
+        customdata = drmkey['authXml']
+        licenseurl = "https://wv-keyos.licensekeyserver.com/"
+        header = {
+            "license": licenseurl,
+            "customdata": customdata,
+            "pssh": pssh,
+            "buildInfo": "",
+            "proxy": ""
         }
-        response = requests.post('https://cdrm-project.com/wv', json=json_data)
-        result = re.search(r"[a-z0-9]{16,}:[a-z0-9]{16,}", str(response.text))
+
+        json_data = {
+            "PSSH": pssh,
+            "License URL": licenseurl,
+            "Headers": header,
+            "JSON": "{}",
+            "Cookies": "{}",
+            "Data": "{}",
+            "Proxy": ""
+        }
+
+        response = requests.post("https://cdrm-project.com/", json=json_data)
+        if response.status_code != 200:
+            print(response.json())
+            raise Exception("Request for keys failed!") from None
+        keys = response.json()["Message"].rstrip()
+        result = re.search(r"[a-z0-9]{16,}:[a-z0-9]{16,}", keys)
         decryption_key = result.group()
         decryption_key = f'key_id={decryption_key}'
         decryption_key = decryption_key.replace(":", ":key=")
+        #decryption_key = response.json()["Message"].rstrip()
         print("Decryption Key: " + decryption_key)
         # Download the video using N_m3u8DL-RE
         os.system(
@@ -83,6 +102,20 @@ try:
                 # Run shaka-packager to decrypt the audio file
                 os.system(
                     fr'shaka-packager in="{folder_path}/{name}.{letters}.m4a",stream=audio,output="{dest_dir}/decrypted-audio.{letters}.m4a" --enable_raw_key_decryption --keys {decryption_key}')
+                # Join audio and video
+                print("#################### JOINING AUDIO AND VIDEO ####################")
+                subprocess.call(
+                    [
+                        "ffmpeg",
+                        "-i",
+                        f"{dest_dir}/decrypted-video.mp4",
+                        "-i",
+                        f"{dest_dir}/decrypted-audio.{letters}.m4a",
+                        "-c",
+                        "copy",
+                        f"{dest_dir}/{name}.mp4",
+                    ]
+                )
                 os.remove(f"{folder_path}/{name}.{letters}.m4a")
                 os.remove(f"{folder_path}/{name}.mp4")
                 if videoinfo["captions"] == []:
