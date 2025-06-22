@@ -60,20 +60,20 @@ try:
         }
 
         json_data = {
-            "PSSH": pssh,
-            "License URL": licenseurl,
-            "Headers": header,
+            "pssh": pssh,
+            "licurl": licenseurl,
+            "headers": str(header),
             "JSON": "{}",
             "Cookies": "{}",
             "Data": "{}",
             "Proxy": ""
         }
 
-        response = requests.post("https://cdrm-project.com/", json=json_data)
+        response = requests.post("https://cdrm-project.com/api/decrypt", json=json_data)
         if response.status_code != 200:
             print(response.json())
             raise Exception("Request for keys failed!") from None
-        keys = response.json()["Message"].rstrip()
+        keys = response.json()["message"].rstrip()
         result = re.search(r"[a-z0-9]{16,}:[a-z0-9]{16,}", keys)
         decryption_key = result.group()
         decryption_key = f'key_id={decryption_key}'
@@ -137,5 +137,5 @@ try:
         print('video is not DRM protected')
         manifesturl = videoinfo['manifests'][0]['url']
         os.system(fr'N_m3u8DL-RE "{manifesturl}" --auto-select --save-name "{name}" --auto-select --save-dir "{dest_dir}" --tmp-dir {folder_path}/temp')
-except KeyError:
-    print("Error: 'manifests' or 'url' key not found in videoinfo dictionary.")
+except KeyError as e:
+    print(f"Error: 'manifests' or 'url' key not found in videoinfo dictionary. {e}")
